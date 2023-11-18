@@ -1,0 +1,14 @@
+#This script compares matching outlier loci between two species to a null distribution based on mapping to a common reference genome.
+##Install packages
+install.packages("tidyverse")
+install.packages("ggplot2")
+
+##Load packages
+library(tidyverse)
+library(ggplot2)
+
+##Load and screen data Embiotoca lateralis
+
+##Load and screen data Embiotoca jacksoni
+##Create null distribution
+##Plot and determine significance
