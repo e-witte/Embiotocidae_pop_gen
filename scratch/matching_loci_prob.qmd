@@ -61,72 +61,95 @@ dist <- 1 #set threshold for matches
 ###Screen all loci for Embiotoca jacksoni
 EJA_screen_loci <- data.frame(matrix(ncol = 6, nrow = 0))
 colnames(EJA_screen_loci) <- colnames(EJA_raw_loci)
+
 for(i in 1:nrow(EJA_raw_loci)){
   if(check_match(locus = EJA_raw_loci$BAR[i], thresh = dist, table = ELA_raw_loci$BAR))
-    EJA_screen_loci <- append(EJA_screen_loci, EJA_raw_loci[i])}
+    EJA_screen_loci <- rbind(EJA_screen_loci, EJA_raw_loci[i,])}
     
-EJA_ret <- round((length(EJA_screen_loci)/nrow(EJA_raw_loci)), 4)
+EJA_ret <- round((nrow(EJA_screen_loci)/nrow(EJA_raw_loci)), 4)
 EJA_ret_perc <- as.character(cbind(EJA_ret*100),"%")
 message("retained ", EJA_ret_perc, "% of loci")
 
 ###Screen outlier loci for Embiotoca jacksoni
-EJA_screen_loci_select <- list()
+EJA_screen_loci_select <- data.frame(matrix(ncol = 6, nrow = 0))
+colnames(EJA_screen_loci_select) <- colnames(EJA_raw_loci)
+
 for(i in 1:nrow(EJA_raw_loci_select)){
   if(check_match(locus = EJA_raw_loci_select$BAR[i], thresh = dist, table = ELA_raw_loci$BAR))
-    EJA_screen_loci_select <- append(EJA_screen_loci_select, EJA_raw_loci_select$BAR[i])}
+    EJA_screen_loci_select <- rbind(EJA_screen_loci_select, EJA_raw_loci_select[i,])}
     
-EJA_ret_select <- round((length(EJA_screen_loci_select)/nrow(EJA_raw_loci_select)), 4)
+EJA_ret_select <- round((nrow(EJA_screen_loci_select)/nrow(EJA_raw_loci_select)), 4)
 EJA_ret_perc_select <- as.character(cbind(EJA_ret_select*100),"%")
 message("retained ", EJA_ret_perc_select, "% of loci")
 
 ###Screen all loci for Embiotoca lateralis
-ELA_screen_loci <- list()
+ELA_screen_loci <- data.frame(matrix(ncol = 6, nrow = 0))
+colnames(ELA_screen_loci) <- colnames(ELA_raw_loci)
+
 for(i in 1:nrow(ELA_raw_loci)){
   if(check_match(locus = ELA_raw_loci$BAR[i], thresh = dist, table = EJA_raw_loci$BAR))
-    ELA_screen_loci <- append(ELA_screen_loci, ELA_raw_loci$BAR[i])}
+    ELA_screen_loci <- rbind(ELA_screen_loci, ELA_raw_loci[i,])}
     
-ELA_ret <- round((length(ELA_screen_loci)/nrow(ELA_raw_loci)), 4)
+ELA_ret <- round((nrow(ELA_screen_loci)/nrow(ELA_raw_loci)), 4)
 ELA_ret_perc <- as.character(cbind(ELA_ret*100),"%")
 message("retained ", ELA_ret_perc, "% of loci")
 
 ###Screen outlier loci for Embiotoca lateralis
-ELA_screen_loci_select <- list()
+ELA_screen_loci_select <- data.frame(matrix(ncol = 6, nrow = 0))
+colnames(ELA_screen_loci_select) <- colnames(ELA_raw_loci)
+
 for(i in 1:nrow(ELA_raw_loci_select)){
   if(check_match(locus = ELA_raw_loci_select$BAR[i], thresh = dist, table = EJA_raw_loci$BAR))
-    ELA_screen_loci_select <- append(ELA_screen_loci_select, ELA_raw_loci_select$BAR[i])}
+    ELA_screen_loci_select <- rbind(ELA_screen_loci_select, ELA_raw_loci_select[i,])}
     
-ELA_ret_select <- round((length(EJA_screen_loci_select)/nrow(EJA_raw_loci_select)), 4)
-ELA_ret_perc_select <- as.character(cbind(EJA_ret_select*100),"%")
-message("retained ", EJA_ret_perc_select, "% of loci")
+ELA_ret_select <- round((nrow(ELA_screen_loci_select)/nrow(ELA_raw_loci_select)), 4)
+ELA_ret_perc_select <- as.character(cbind(ELA_ret_select*100),"%")
+message("retained ", ELA_ret_perc_select, "% of loci")
 
 ##Create null distribution
 iter <- 10000 #num iterations
-
 EJA_ELA <- data.frame(iteration=1:iter, matches= NA) #create unfilled data frame
+n_select_EJA<- nrow(EJA_screen_loci_select)
+n_select_ELA<- nrow(ELA_screen_loci_select)
 
 for(i in 1:iter){
-
-EJA_df <- data.frame(EJA_BAR=sample(EJA_screen_loci, length(EJA_screen_loci_select), replace=FALSE), MATCH=NA) #create a EJA df with a sample of BAR values
-
-ELA_df <- data.frame(ELA_BAR=sample(ELA_loci$BAR, ELA_loci_thresh, replace=FALSE), MATCH= NA) #create a ELA df with a sample of BAR values
-
-for(z in 1:PVA_loci_thresh) {
-
-ELA_df$MATCH <- ifelse(abs(PVA_df$PVA_BAR[z]-ELA_df$ELA_BAR)<=match_thresh,1,0)
-
-PVA_df$MATCH[z]<- sum(ELA_df$MATCH)  #total number of matches for a given PVA locus
-
-ELA_df$MATCH<-NA  #clear ELA_df$MATCH variable 
-
-} 
-
-PJA_ELA$matches[i] <- sum(PVA_df$MATCH, na.rm=TRUE) 
-
-rm(PVA_df) 
-
-rm(ELA_df) 
-
+EJA_sample <- sample(EJA_screen_loci$BAR, n_select_EJA, replace = FALSE)
+ELA_sample <- sample(ELA_screen_loci$BAR, n_select_ELA, replace = FALSE)
+match_count <- 0
+for(z in 1:length(EJA_sample)) {
+  if(check_match(locus = EJA_sample[z], thresh = dist, table = ELA_sample))
+    match_count <- match_count + 1
+}
+EJA_ELA$matches[i] <- match_count
 } # Runs iterations of matches-- populates EJA_ELA$matches
 
+nrow(EJA_ELA)
+mean_EJA_ELA<- mean(EJA_ELA$matches)
 
 ##Plot and determine significance
+###Observed matches
+obs_loci_EJA_ELA <- data.frame(matrix(ncol = 6, nrow = 0))
+colnames(obs_loci_EJA_ELA) <- colnames(EJA_raw_loci)
+
+for(i in 1:nrow(EJA_screen_loci_select)){
+if(check_match(locus = EJA_screen_loci_select$BAR[i], thresh = dist, table = ELA_screen_loci_select$BAR))
+  obs_loci_EJA_ELA <- rbind(obs_loci_EJA_ELA, EJA_screen_loci_select[i,])
+}
+
+obs<-nrow(obs_loci_EJA_ELA)
+obs
+
+###Probability distribution function
+ggplot(EJA_ELA, aes(x=matches)) +geom_histogram(binwidth=1) + geom_vline(aes(xintercept= mean_EJA_ELA), linetype="dashed") + geom_vline(aes(xintercept = obs), colour="green") + (labs(title= "Probability distribution function of locus matches between E. lateralis and E. jacksoni"))
+
+###Cumulative distribution function
+cdf<- data.frame(x = 1:(max(EJA_ELA$matches)+1), y = NA)
+cdf$y<- cumsum(table(EJA_ELA$matches)) / nrow(EJA_ELA)
+
+cdf_plot<- ggplot(cdf, aes(x,y)) + 
+  geom_point(size=3) + 
+  labs (x = "Number of matches", y = "Cumulative probability") +
+  ggtitle("Cumulative probability function of matches between E. jacksoni and E. lateralis")+
+  scale_x_continuous(breaks=seq(0,nrow(cdf), by = 1)) +
+  scale_y_continuous(breaks = seq(0, 1, by = 0.1))
+
