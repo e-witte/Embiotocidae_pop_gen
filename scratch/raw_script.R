@@ -36,7 +36,7 @@ prob_df_raw<- ggplot(RTO_PVA_raw, aes(x=matches)) +geom_histogram(binwidth=1) + 
 ggsave(filename = "figs/RTO_PVA_prob_df_raw.png", plot = prob_df_raw)
 
 ###Cumulative distribution function
-cdf_raw<- data.frame(x = 1:(max(RTO_PVA_raw$matches)), y = NA)
+cdf_raw<- data.frame(x = 1:(max(RTO_PVA_raw$matches)+1), y = NA)
 cdf_raw$y<- cumsum(table(RTO_PVA_raw$matches)) / nrow(RTO_PVA_raw)
 qtile_raw<- cdf_raw[obs,2]
 p_raw <- as.character(1-qtile_raw)

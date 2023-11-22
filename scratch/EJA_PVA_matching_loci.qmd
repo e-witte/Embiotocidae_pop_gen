@@ -1,0 +1,172 @@
+#This script compares matching outlier loci between two species to a null distribution based on mapping to a common reference genome.
+##Install packages
+install.packages("tidyverse")
+install.packages("ggplot2")
+install.packages("readxl")
+
+##Load packages
+library(tidyverse)
+library(ggplot2)
+library(readxl)
+
+##Load and format data for Phanerodon vacca
+PVA_raw_loci <- read_xlsx(path = "data/Embiotoca_outliers_mapped.xlsx", sheet = 3, range = cell_cols("A:D"))
+head(PVA_raw_loci)
+
+min(PVA_raw_loci$phi_st, na.rm=TRUE) #ensure minimum phi value is set to zero
+
+###PVA_raw_loci$phi_st <- ifelse(PVA_raw_loci$phi_st<=0, 0, PVA_raw_loci$phi_st) #set values less than 0 to 0.
+
+mapping <- c("SCAF_1"=1, "SCAF_2"=2, "SCAF_3"=3, "SCAF_4"=4, "SCAF_5"=5, "SCAF_6"=6, "SCAF_7"=7, "SCAF_8"=8, "SCAF_9"=9, "SCAF_10"=10, "SCAF_11"=11, "SCAF_12"=12, "SCAF_13"=13, "SCAF_14"=14, "SCAF_15"=15, "SCAF_16"=16, "SCAF_17"=17, "SCAF_18"=18, "SCAF_19"=19, "SCAF_20"=20, "SCAF_21"=21, "SCAF_22"=22, "SCAF_23"=23, "SCAF_24"=24, "SCAF_25"=25, "SCAF_26"=26, "SCAF_27"=27, "SCAF_28"=28, "SCAF_29"=29, "SCAF_30"=30, "SCAF_31"=31, "SCAF_32"=32, "SCAF_33"=33, "SCAF_34"=34, "SCAF_35"=35, "SCAF_36"=36, "SCAF_37"=37, "SCAF_38"=38, "SCAF_39"=39, "SCAF_40"=40, "SCAF_41"=41, "SCAF_42"=42, "SCAF_43"=43, "SCAF_44"=44, "SCAF_45"=45, "SCAF_46"=46, "SCAF_47"=47, "SCAF_48"=48, "SCAF_49"=49, "SCAF_50"=50, "SCAF_51"=51, "SCAF_52"=52, "SCAF_53"=53, "SCAF_54"=54, "SCAF_55"=55, "SCAF_56"=56, "SCAF_57"=57, "SCAF_58"=58, "SCAF_59"=59, "SCAF_60"=60, "SCAF_61"=61, "SCAF_62"=62, "SCAF_63"=63, "SCAF_64"=64, "SCAF_65"=65, "SCAF_66"=66, "SCAF_67"=67, "SCAF_68"=68, "SCAF_69"=69, "SCAF_70"=70, "SCAF_71"=71, "SCAF_72"=72, "SCAF_73"=73, "SCAF_74"=74, "SCAF_75"=75, "SCAF_76"=76, "SCAF_77"=77, "SCAF_78"=78, "SCAF_79"=79, "SCAF_80"=80, "SCAF_81"=81, "SCAF_82"=82, "SCAF_83"=83, "SCAF_84"=84, "SCAF_85"=85, "SCAF_86"=86, "SCAF_87"=87, "SCAF_88"=88, "SCAF_89"=89, "SCAF_90"=90, "SCAF_91"=91, "SCAF_92"=92, "SCAF_93"=93, "SCAF_94"=94, "SCAF_95"=95, "SCAF_96"=96, "SCAF_97"=97, "SCAF_98"=98, "SCAF_99"=99, "SCAF_100"=100, "SCAF_101"=101, "SCAF_102"=102, "SCAF_103"=103, "SCAF_104"=104, "SCAF_105"=105, "SCAF_106"=106, "SCAF_107"=107, "SCAF_108"=108, "SCAF_109"=109, "SCAF_110"=110, "SCAF_111"=111, "SCAF_112"=112, "SCAF_113"=113, "SCAF_114"=114, "SCAF_115"=115, "SCAF_116"=116, "SCAF_117"=117, "SCAF_118"=118, "SCAF_119"=119, "SCAF_120"=120, "SCAF_121"=121, "SCAF_122"=122, "SCAF_123"=123, "SCAF_124"=124, "SCAF_125"=125, "SCAF_126"=126, "SCAF_127"=127, "SCAF_128"=128, "SCAF_129"=129, "SCAF_130"=130, "SCAF_131"=131, "SCAF_132"=132, "SCAF_133"=133, "SCAF_134"=134, "SCAF_135"=135, "SCAF_136"=136, "SCAF_137"=137, "SCAF_138"=138, "SCAF_139"=139, "SCAF_140"=140, "SCAF_141"=141, "SCAF_142"=142, "SCAF_143"=143, "SCAF_144"=144, "SCAF_145"=145, "SCAF_146"=146, "SCAF_147"=147, "SCAF_148"=148, "SCAF_149"=149, "SCAF_150"=150, "SCAF_151"=151, "SCAF_152"=152) #map scaffolds to numeric values
+
+PVA_raw_loci <- mutate(PVA_raw_loci, SCAF_NUM=mapping[PVA_raw_loci$Chr]) # map loci as numeric variable
+
+PVA_raw_loci$BP <- as.numeric(PVA_raw_loci$BP) #Convert BP to numeric variable
+
+PVA_raw_loci <- mutate(PVA_raw_loci, BAR= (1000000000 * PVA_raw_loci$SCAF_NUM + PVA_raw_loci$BP)) #create barcode (SCAF*1bil + BP)
+
+###Identify outliers using Average + 3sd
+
+PVA_ave_phi <- mean(PVA_raw_loci$phi_st, na.rm = TRUE)
+
+PVA_sd_phi <- sd(PVA_raw_loci$phi_st, na.rm = TRUE)
+
+PVA_thresh_phi <- PVA_ave_phi + 3 * PVA_sd_phi
+
+PVA_raw_loci_select <- PVA_raw_loci %>% filter(PVA_raw_loci$phi_st > PVA_thresh_phi, na.rm = TRUE)
+
+view(PVA_raw_loci_select)
+
+##Load and format data for Embiotoca jacksoni
+EJA_raw_loci <- read_xlsx(path = "data/Embiotoca_outliers_mapped.xlsx", sheet = 2, range = cell_cols("A:D"))
+head(EJA_raw_loci)
+
+min(EJA_raw_loci$phi_st, na.rm=TRUE) #ensure minimum phi value is set to zero
+
+###EJA_raw_loci$phi_st <- ifelse(EJA_raw_loci$phi_st<=0, 0, EJA_raw_loci$phi_st) #set values less than 0 to 0.
+
+mapping <- c("SCAF_1"=1, "SCAF_2"=2, "SCAF_3"=3, "SCAF_4"=4, "SCAF_5"=5, "SCAF_6"=6, "SCAF_7"=7, "SCAF_8"=8, "SCAF_9"=9, "SCAF_10"=10, "SCAF_11"=11, "SCAF_12"=12, "SCAF_13"=13, "SCAF_14"=14, "SCAF_15"=15, "SCAF_16"=16, "SCAF_17"=17, "SCAF_18"=18, "SCAF_19"=19, "SCAF_20"=20, "SCAF_21"=21, "SCAF_22"=22, "SCAF_23"=23, "SCAF_24"=24, "SCAF_25"=25, "SCAF_26"=26, "SCAF_27"=27, "SCAF_28"=28, "SCAF_29"=29, "SCAF_30"=30, "SCAF_31"=31, "SCAF_32"=32, "SCAF_33"=33, "SCAF_34"=34, "SCAF_35"=35, "SCAF_36"=36, "SCAF_37"=37, "SCAF_38"=38, "SCAF_39"=39, "SCAF_40"=40, "SCAF_41"=41, "SCAF_42"=42, "SCAF_43"=43, "SCAF_44"=44, "SCAF_45"=45, "SCAF_46"=46, "SCAF_47"=47, "SCAF_48"=48, "SCAF_49"=49, "SCAF_50"=50, "SCAF_51"=51, "SCAF_52"=52, "SCAF_53"=53, "SCAF_54"=54, "SCAF_55"=55, "SCAF_56"=56, "SCAF_57"=57, "SCAF_58"=58, "SCAF_59"=59, "SCAF_60"=60, "SCAF_61"=61, "SCAF_62"=62, "SCAF_63"=63, "SCAF_64"=64, "SCAF_65"=65, "SCAF_66"=66, "SCAF_67"=67, "SCAF_68"=68, "SCAF_69"=69, "SCAF_70"=70, "SCAF_71"=71, "SCAF_72"=72, "SCAF_73"=73, "SCAF_74"=74, "SCAF_75"=75, "SCAF_76"=76, "SCAF_77"=77, "SCAF_78"=78, "SCAF_79"=79, "SCAF_80"=80, "SCAF_81"=81, "SCAF_82"=82, "SCAF_83"=83, "SCAF_84"=84, "SCAF_85"=85, "SCAF_86"=86, "SCAF_87"=87, "SCAF_88"=88, "SCAF_89"=89, "SCAF_90"=90, "SCAF_91"=91, "SCAF_92"=92, "SCAF_93"=93, "SCAF_94"=94, "SCAF_95"=95, "SCAF_96"=96, "SCAF_97"=97, "SCAF_98"=98, "SCAF_99"=99, "SCAF_100"=100, "SCAF_101"=101, "SCAF_102"=102, "SCAF_103"=103, "SCAF_104"=104, "SCAF_105"=105, "SCAF_106"=106, "SCAF_107"=107, "SCAF_108"=108, "SCAF_109"=109, "SCAF_110"=110, "SCAF_111"=111, "SCAF_112"=112, "SCAF_113"=113, "SCAF_114"=114, "SCAF_115"=115, "SCAF_116"=116, "SCAF_117"=117, "SCAF_118"=118, "SCAF_119"=119, "SCAF_120"=120, "SCAF_121"=121, "SCAF_122"=122, "SCAF_123"=123, "SCAF_124"=124, "SCAF_125"=125, "SCAF_126"=126, "SCAF_127"=127, "SCAF_128"=128, "SCAF_129"=129, "SCAF_130"=130, "SCAF_131"=131, "SCAF_132"=132, "SCAF_133"=133, "SCAF_134"=134, "SCAF_135"=135, "SCAF_136"=136, "SCAF_137"=137, "SCAF_138"=138, "SCAF_139"=139, "SCAF_140"=140, "SCAF_141"=141, "SCAF_142"=142, "SCAF_143"=143, "SCAF_144"=144, "SCAF_145"=145, "SCAF_146"=146, "SCAF_147"=147, "SCAF_148"=148, "SCAF_149"=149, "SCAF_150"=150, "SCAF_151"=151, "SCAF_152"=152) #map scaffolds to numeric values
+
+EJA_raw_loci <- mutate(EJA_raw_loci, SCAF_NUM=mapping[EJA_raw_loci$Chr]) # map loci as numeric variable
+
+EJA_raw_loci$BP <- as.numeric(EJA_raw_loci$BP) #Convert BP to numeric variable
+
+EJA_raw_loci <- mutate(EJA_raw_loci, BAR= (1000000000 * EJA_raw_loci$SCAF_NUM + EJA_raw_loci$BP)) #create barcode (SCAF*1bil + BP)
+
+###Identify outliers using Average + 3sd
+EJA_ave_phi <- mean(EJA_raw_loci$phi_st, na.rm = TRUE)
+EJA_sd_phi <- sd(EJA_raw_loci$phi_st, na.rm = TRUE)
+EJA_thresh_phi <- EJA_ave_phi + 3 * EJA_sd_phi
+EJA_raw_loci_select <- EJA_raw_loci %>% filter(EJA_raw_loci$phi_st > EJA_thresh_phi, na.rm = TRUE)
+view(EJA_raw_loci_select)
+
+##Screen data
+dist <- 1 #set threshold for matches
+PVA_raw_loci <- na.omit(PVA_raw_loci)
+EJA_raw_loci <- na.omit(EJA_raw_loci)
+
+###Screen all loci for Embiotoca jacksoni
+EJA_screen_loci <- data.frame(matrix(ncol = 6, nrow = 0))
+colnames(EJA_screen_loci) <- colnames(EJA_raw_loci)
+
+for(i in 1:nrow(EJA_raw_loci)){
+  if(check_match(locus = EJA_raw_loci$BAR[i], thresh = dist, table = PVA_raw_loci$BAR))
+    EJA_screen_loci <- rbind(EJA_screen_loci, EJA_raw_loci[i,])}
+    
+EJA_ret <- round((nrow(EJA_screen_loci)/nrow(EJA_raw_loci)), 4)
+EJA_ret_perc <- as.character(cbind(EJA_ret*100),"%")
+message("retained ", EJA_ret_perc, "% of loci")
+
+###Screen outlier loci for Embiotoca jacksoni
+EJA_screen_loci_select <- data.frame(matrix(ncol = 6, nrow = 0))
+colnames(EJA_screen_loci_select) <- colnames(EJA_raw_loci)
+
+for(i in 1:nrow(EJA_raw_loci_select)){
+  if(check_match(locus = EJA_raw_loci_select$BAR[i], thresh = dist, table = PVA_raw_loci$BAR))
+    EJA_screen_loci_select <- rbind(EJA_screen_loci_select, EJA_raw_loci_select[i,])}
+    
+EJA_ret_select <- round((nrow(EJA_screen_loci_select)/nrow(EJA_raw_loci_select)), 4)
+EJA_ret_perc_select <- as.character(cbind(EJA_ret_select*100),"%")
+message("retained ", EJA_ret_perc_select, "% of loci")
+
+###Screen all loci for Phanerodon vacca
+PVA_screen_loci <- data.frame(matrix(ncol = 6, nrow = 0))
+colnames(PVA_screen_loci) <- colnames(PVA_raw_loci)
+
+for(i in 1:nrow(PVA_raw_loci)){
+  if(check_match(locus = PVA_raw_loci$BAR[i], thresh = dist, table = EJA_raw_loci$BAR))
+    PVA_screen_loci <- rbind(PVA_screen_loci, PVA_raw_loci[i,])}
+    
+PVA_ret <- round((nrow(PVA_screen_loci)/nrow(PVA_raw_loci)), 4)
+PVA_ret_perc <- as.character(cbind(PVA_ret*100),"%")
+message("retained ", PVA_ret_perc, "% of loci")
+
+###Screen outlier loci for Phanerodon vacca
+PVA_screen_loci_select <- data.frame(matrix(ncol = 6, nrow = 0))
+colnames(PVA_screen_loci_select) <- colnames(PVA_raw_loci)
+
+for(i in 1:nrow(PVA_raw_loci_select)){
+  if(check_match(locus = PVA_raw_loci_select$BAR[i], thresh = dist, table = EJA_raw_loci$BAR))
+    PVA_screen_loci_select <- rbind(PVA_screen_loci_select, PVA_raw_loci_select[i,])}
+    
+PVA_ret_select <- round((nrow(PVA_screen_loci_select)/nrow(PVA_raw_loci_select)), 4)
+PVA_ret_perc_select <- as.character(cbind(PVA_ret_select*100),"%")
+message("retained ", PVA_ret_perc_select, "% of loci")
+
+##Create null distribution
+iter <- 10000 #num iterations
+EJA_PVA <- data.frame(iteration=1:iter, matches= NA) #create unfilled data frame
+n_select_EJA<- nrow(EJA_screen_loci_select)
+n_select_PVA<- nrow(PVA_screen_loci_select)
+
+for(i in 1:iter){
+EJA_sample <- sample(EJA_screen_loci$BAR, n_select_EJA, replace = FALSE)
+PVA_sample <- sample(PVA_screen_loci$BAR, n_select_PVA, replace = FALSE)
+match_count <- 0
+for(z in 1:length(EJA_sample)) {
+  if(check_match(locus = EJA_sample[z], thresh = dist, table = PVA_sample))
+    match_count <- match_count + 1
+}
+EJA_PVA$matches[i] <- match_count
+} # Runs iterations of matches-- populates EJA_PVA$matches
+
+nrow(EJA_PVA)
+mean_EJA_PVA<- mean(EJA_PVA$matches)
+
+##Plot and determine significance
+###Observed matches
+obs_loci_EJA_PVA <- data.frame(matrix(ncol = 6, nrow = 0))
+colnames(obs_loci_EJA_PVA) <- colnames(EJA_raw_loci)
+
+for(i in 1:nrow(EJA_screen_loci_select)){
+if(check_match(locus = EJA_screen_loci_select$BAR[i], thresh = dist, table = PVA_screen_loci_select$BAR))
+  obs_loci_EJA_PVA <- rbind(obs_loci_EJA_PVA, EJA_screen_loci_select[i,])
+}
+
+obs<-nrow(obs_loci_EJA_PVA)
+obs
+
+###Probability distribution function
+prob_df<- ggplot(EJA_PVA, aes(x=matches)) +geom_histogram(binwidth=1) + geom_vline(aes(xintercept= mean_EJA_PVA), linetype="dashed") + geom_vline(aes(xintercept = obs), colour="green") + (labs(title= "Probability distribution between P. vacca and E. jacksoni"))
+
+ggsave(filename = "figs/EJA_PVA_prob_df.png", plot = prob_df)
+
+###Cumulative distribution function
+cdf<- data.frame(x = 1:(max(EJA_PVA$matches)+1), y = NA)
+cdf$y<- cumsum(table(EJA_PVA$matches)) / nrow(EJA_PVA)
+qtile<- cdf[obs,2]
+p <- as.character(1-qtile)
+
+
+cdf_plot<- ggplot(cdf, aes(x,y)) + 
+  geom_point(size=3) + 
+  labs (x = "Number of matches", y = "Cumulative probability") +
+  ggtitle("CDF of matches between E. jacksoni and P. vacca \n p =", p)+
+  scale_x_continuous(breaks=seq(0,nrow(cdf), by = 1)) +
+  scale_y_continuous(breaks = seq(0, 1, by = 0.1)) + 
+  geom_segment(x=obs, y=0, xend=obs, yend=qtile, color = 'red', linetype = "dashed", size= 1) +
+  geom_segment(x= 0, y = qtile, xend = obs, yend = qtile, color = 'red', linetype = "dashed", size = 1)
+  
+ggsave("figs/EJA_PVA_cum_df.png", cdf_plot)
+
+
